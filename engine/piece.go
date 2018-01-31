@@ -1,5 +1,8 @@
 package engine
 
+import (
+)
+
 type Piece struct {
 	White  bool
 	Square bool
@@ -76,10 +79,8 @@ func checkSquare(g *Game, p *Piece, sq *Square, cl *CheckList,cX, cY, dX, dY int
 		return true
 	}
 
-	if sq.Piece != nil {
-		if p.x != cX && p.y != cY {
-			return false
-		}
+	if sq.Piece != nil && len(cl.Positions) > 1 {
+		return false
 	}
 
 	if sq.Tile != EmptyTile {
