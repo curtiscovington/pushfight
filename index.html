@@ -85,7 +85,7 @@
             let turn = 0;
             let isWhite = false;
             let isStarted = false;
-            let ws = new WebSocket("ws://localhost:3000/ws");
+            let ws = new WebSocket("ws://"+location.host+ "/ws");
             let selected = null;
 
             let whitePieces = [
