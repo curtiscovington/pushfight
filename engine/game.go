@@ -1,13 +1,16 @@
 package engine
 
 type Game struct {
-	Board  Board
-	Pieces []Piece
+	Board     Board
+	Pieces    []Piece
+	AnchorX   int
+	AnchorY   int
+	DeadPiece *Piece
 }
 
-func (g Game) GetPiece(x, y int) *Piece{
+func (g Game) GetPiece(x, y int) *Piece {
 	return g.Board[y][x].Piece
-} 
+}
 
 func (g *Game) PlacePiece(p *Piece, x, y int) {
 	p.PlacePiece(x, y)
@@ -16,8 +19,10 @@ func (g *Game) PlacePiece(p *Piece, x, y int) {
 
 func NewGame() Game {
 	g := Game{
-		Board:  DefaultBoard(),
-		Pieces: make([]Piece, 10),
+		Board:   DefaultBoard(),
+		Pieces:  make([]Piece, 10),
+		AnchorX: -1,
+		AnchorY: -1,
 	}
 	// White
 	g.Pieces[0] = *NewWhiteSquarePiece()

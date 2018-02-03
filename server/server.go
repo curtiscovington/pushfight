@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+
 	"github.com/curtiscovington/pushfight/engine"
 	"github.com/gorilla/websocket"
 )
@@ -9,6 +11,7 @@ type Game struct {
 	conns     [2]*websocket.Conn
 	isStarted bool
 	turn      int
+	numMoved  int
 	engine    engine.Game
 	whiteCh   chan []byte
 	blackCh   chan []byte
@@ -19,10 +22,33 @@ func NewGame(c1, c2 *websocket.Conn) *Game {
 		conns:     [2]*websocket.Conn{c1, c2},
 		isStarted: false,
 		turn:      0,
+		numMoved:  0,
 		engine:    engine.NewGame(),
 		whiteCh:   make(chan []byte),
 		blackCh:   make(chan []byte),
 	}
+}
+
+func (g Game) HasMoves() bool {
+	return g.numMoved < 2
+}
+
+func (g *Game) IncrementMoves() {
+	g.numMoved++
+}
+func (g *Game) NextTurn() {
+	g.turn++
+	g.numMoved = 0
+	for i := range g.conns {
+		g.conns[i].WriteMessage(websocket.TextMessage, []byte("end"))
+	}
+}
+func (g Game) IsWhiteTurn() bool {
+	return g.turn%2 == 0
+}
+
+func (g Game) IsBlackTurn() bool {
+	return g.turn%2 == 1
 }
 
 func (g *Game) Start() {
@@ -48,15 +74,44 @@ func (g *Game) run() {
 		select {
 		case msg := <-g.whiteCh:
 			coords := parseLine(msg)
-			if len(coords) == 4 {
+			if g.IsWhiteTurn() && len(coords) == 4 {
 				p := g.engine.GetPiece(coords[0], coords[1])
 				if p != nil && p.White {
-					if p.CanMove(&g.engine, coords[2], coords[3]) {
+					fmt.Printf("%v", p)
+					println(coords[0], coords[1], coords[2], coords[3])
+					if p.CanPush(&g.engine, coords[2], coords[3]) {
+						g.engine.AnchorX = coords[2]
+						g.engine.AnchorY = coords[3]
+
+						if g.engine.DeadPiece != nil {
+
+							if g.engine.DeadPiece.White {
+								for i := range g.conns {
+									g.conns[i].WriteMessage(websocket.TextMessage, []byte("Black Wins"))
+								}
+							} else {
+								for i := range g.conns {
+									g.conns[i].WriteMessage(websocket.TextMessage, []byte("White Wins"))
+								}
+							}
+
+							for i := range g.conns {
+								g.conns[i].Close()
+							}
+						}
+
+						for i := range g.conns {
+							g.conns[i].WriteMessage(websocket.TextMessage, append([]byte("PUSH "), msg...))
+						}
+						g.engine.DrawBoard()
+						g.NextTurn()
+					} else if g.HasMoves() && p.CanMove(&g.engine, coords[2], coords[3]) {
 						g.engine.Board[coords[1]][coords[0]].Piece = nil
 						g.engine.PlacePiece(p, coords[2], coords[3])
 						g.conns[0].WriteMessage(websocket.TextMessage, msg)
 						g.conns[1].WriteMessage(websocket.TextMessage, msg)
 						g.engine.DrawBoard()
+						g.IncrementMoves()
 					} else {
 						g.conns[0].WriteMessage(websocket.TextMessage, []byte("0"))
 					}
@@ -66,15 +121,42 @@ func (g *Game) run() {
 			}
 		case msg := <-g.blackCh:
 			coords := parseLine(msg)
-			if len(coords) == 4 {
+			if g.IsBlackTurn() && len(coords) == 4 {
 				p := g.engine.GetPiece(coords[0], coords[1])
 				if p != nil && !p.White {
-					if p.CanMove(&g.engine, coords[2], coords[3]) {
+					if p.CanPush(&g.engine, coords[2], coords[3]) {
+						g.engine.AnchorX = coords[2]
+						g.engine.AnchorY = coords[3]
+						if g.engine.DeadPiece != nil {
+
+							if g.engine.DeadPiece.White {
+								for i := range g.conns {
+									g.conns[i].WriteMessage(websocket.TextMessage, []byte("Black Wins"))
+								}
+							} else {
+								for i := range g.conns {
+									g.conns[i].WriteMessage(websocket.TextMessage, []byte("White Wins"))
+								}
+							}
+
+							for i := range g.conns {
+								g.conns[i].Close()
+							}
+						}
+
+						for i := range g.conns {
+							g.conns[i].WriteMessage(websocket.TextMessage, append([]byte("PUSH "), msg...))
+						}
+						g.engine.DrawBoard()
+						g.NextTurn()
+					} else if g.HasMoves() && p.CanMove(&g.engine, coords[2], coords[3]) {
 						g.engine.Board[coords[1]][coords[0]].Piece = nil
 						g.engine.PlacePiece(p, coords[2], coords[3])
 						g.engine.DrawBoard()
 						g.conns[1].WriteMessage(websocket.TextMessage, msg)
 						g.conns[0].WriteMessage(websocket.TextMessage, msg)
+
+						g.IncrementMoves()
 					} else {
 						g.conns[1].WriteMessage(websocket.TextMessage, []byte("0"))
 					}
@@ -87,6 +169,7 @@ func (g *Game) run() {
 }
 
 func parseLine(line []byte) []int {
+
 	var coords []int
 	coords = make([]int, 0)
 	for _, r := range line {
@@ -133,6 +216,6 @@ func parseLine(line []byte) []int {
 			break
 		}
 	}
-
+	println(string(line), coords[0], coords[1], coords[2], coords[3])
 	return coords
 }

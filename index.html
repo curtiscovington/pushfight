@@ -64,17 +64,19 @@
         
         <rect id="fill" x="0" y="0" width="100%" height="100%"  fill="red" stroke-width="1"/>
         
-        <rect class="piece square A5" x="50" y="200" width="50" height="50" fill="black" stroke="white" stroke-width="1" />
-        <rect class="piece square B5" x="100" y="200" width="50" height="50" fill="black" stroke="white" stroke-width="1" />
-        <rect class="piece square C5" x="0" y="200" width="50" height="50" fill="black" stroke="white" stroke-width="1" />
-        <circle class="piece round D5" cx="175" cy="225" r="25" fill="black" stroke="white" stroke-width="1" />
-        <circle class="piece round C6" cx="125" cy="275" r="25" fill="black" stroke="white" stroke-width="1" />
+        <rect class="black piece square A5" x="0" y="200" width="50" height="50" fill="black" stroke="white" stroke-width="1" />        
+        <rect class="black piece square B5" x="50" y="200" width="50" height="50" fill="black" stroke="white" stroke-width="1" />
+        <rect class="black piece square C5" x="100" y="200" width="50" height="50" fill="black" stroke="white" stroke-width="1" />
+        <circle class="black piece round D5" cx="175" cy="225" r="25" fill="black" stroke="white" stroke-width="1" />
+        <circle class="black piece round C6" cx="125" cy="275" r="25" fill="black" stroke="white" stroke-width="1" />
 
-        <rect class="piece A4" x="0" y="150" width="50" height="50" fill="white" stroke="black" stroke-width="1" />
-        <rect class="piece B4" x="50" y="150" width="50" height="50" fill="white" stroke="black" stroke-width="1" />
-        <rect class="piece C4" x="100" y="150" width="50" height="50" fill="white" stroke="black" stroke-width="1" />
-        <circle class="piece round D4" cx="175" cy="175" r="25" fill="white" stroke="black" stroke-width="1" />
-        <circle class="piece round B3" cx="75" cy="125" r="25" fill="white" stroke="black" stroke-width="1" />
+        <rect class="white piece square A4" x="0" y="150" width="50" height="50" fill="white" stroke="black" stroke-width="1" />
+        <rect class="white piece square B4" x="50" y="150" width="50" height="50" fill="white" stroke="black" stroke-width="1" />
+        <rect class="white piece square C4" x="100" y="150" width="50" height="50" fill="white" stroke="black" stroke-width="1" />
+        <circle class="white piece round D4" cx="175" cy="175" r="25" fill="white" stroke="black" stroke-width="1" />
+        <circle class="white piece round B3" cx="75" cy="125" r="25" fill="white" stroke="black" stroke-width="1" />
+        <text id="anchor" x="25" y="25" font-size="15" text-anchor="middle" fill="red">X
+        </text>
         </svg>
 
         
@@ -108,6 +110,48 @@
                     document.getElementById('fill').remove()
                     document.getElementById('player').innerHTML = "Black";
                     setTurn();
+                }
+                else if (e.data == "end") {
+                    selected = null;
+                    turn++;
+                    setTurn();
+                } else if (e.data === "White Wins") {
+                    document.getElementById("turn").innerHTML = "White Wins"
+                } else if (e.data === "Black Wins") {
+                    document.getElementById("turn").innerHTML = "Black Wins"
+                } else if (e.data.match(/PUSH/g)) {
+                    let coords = e.data.split(' ');
+                    coords.shift();
+                    let x1 = _letterToInt(coords[0][0]);
+                    let x2 = _letterToInt(coords[1][0]);
+                    let y1 = +coords[0][1];
+                    let y2 = +coords[1][1];
+
+                    dx = x2 - x1;
+                    dy = y2 - y1;
+
+                    if (dy < 0) {
+                        // up
+                        moveDirection("up", x1, y1)
+                    } else if (dy > 0) {
+                        // down
+                        moveDirection("down", x1, y1)
+                    } else if (dx < 0) {
+                        // left
+                        moveDirection("left", x1, y1)
+                    } else if (dx > 0) {
+                        // right
+                        moveDirection("right", x1, y1)
+                    } 
+
+                    let anchor = document.getElementById("anchor");
+                    let tile = document.querySelector(".tile."+coords[1]);
+                    let x = +tile.getAttribute("x");
+                    let y = +tile.getAttribute("y");
+                    
+                    anchor.setAttributeNS(null, "x", x+25)
+                    anchor.setAttributeNS(null, "y", y+25)
+                   
                 } else if (e.data.length == 5) {
                     console.log(e.data);
                     coords = e.data.split(' ');
@@ -145,20 +189,37 @@
                         let cx = ((+selected.getAttribute("x")))/50;
                         let cy = ((+selected.getAttribute("y")))/50 + 1;
                         ws.send(_convertToCommand(cx, cy, x/50, y/50+1));
-                        // selected.setAttributeNS(null, "x", x)
-                        // selected.setAttributeNS(null, "y", y)
+                        
                     }
-                    
+                    selected.setAttributeNS(null, "stroke", "black")
                     selected = null;
                     
                 }
             }));
 
             document.querySelectorAll(".piece").forEach(elem => elem.addEventListener("click", function(e) {
+                if (selected != null && selected.classList.contains("square")) {
+                    let cx = ((+selected.getAttribute("x")))/50;
+                    let cy = ((+selected.getAttribute("y")))/50 + 1;
+                    let x;
+                    let y;
+                    if (e.target instanceof SVGRectElement) {
+                        x = ((+e.target.getAttribute("x")))/50;
+                        y = ((+e.target.getAttribute("y")))/50 + 1;
+                    } else {
+                        x = ((+e.target.getAttribute("cx")) - 25)/50;
+                        y = ((+e.target.getAttribute("cy")) - 25)/50 + 1;
+                    }
+                    ws.send(_convertToCommand(cx, cy, x, y));
+
+                } else if ((isWhite && e.target.classList.contains("white")) || (!isWhite && e.target.classList.contains("black"))) {
                 selected = e.target;
+                selected.setAttributeNS(null, "stroke", "red");
+                }
             }));
 
             function _convertToCommand(cx, cy, x, y) {
+                console.log(cx, cy, x, y)
                 return `${_intToLetter(cx)}${cy} ${_intToLetter(x)}${y}`;
             }
 
@@ -167,12 +228,96 @@
 
                 return letters[i];
             }
+            function _letterToInt(i) {
+                let ints = {
+                    "A": 0,
+                    "B": 1,
+                    "C": 2,
+                    "D": 3
+                };
+
+                return ints[i];
+            }
             function setTurn() {
                 if (turn % 2 == 0) {
                     document.getElementById('turn').innerHTML = "White's Turn";
                 } else {
                     document.getElementById('turn').innerHTML = "Black's Turn";
                 }
+            }
+
+            function moveDirection(dir, x, y, lastCoords) { 
+                coords = _intToLetter(x) + y;
+                console.log(x, y)
+                if (dir == "up") {
+                    let tile = document.querySelector('.tile.'+coords)
+                    if (document.querySelector(".piece."+coords) !== null) {
+                        let next = moveDirection("up", x, y-1, coords)
+                        // nextCoords = _intToLetter(x) + (y-1);
+                        if (typeof lastCoords != "undefined") {
+                            return _movePiece(next, lastCoords)
+                        }
+                        
+                    } else {
+                        return _movePiece(coords, lastCoords)
+                    }
+                } else if (dir == "down") {
+                    let tile = document.querySelector('.tile.'+coords)
+                    if (document.querySelector(".piece."+coords) !== null) {
+                        let next = moveDirection("down", x, y+1, coords)
+                        // nextCoords = _intToLetter(x) + (y-1);
+                        if (typeof lastCoords != "undefined") {
+                            return _movePiece(next, lastCoords)
+                        }
+                        
+                    } else {
+                        return _movePiece(coords, lastCoords)
+                    }
+                } else if (dir == "left") {
+                    let tile = document.querySelector('.tile.'+coords)
+                    if (document.querySelector(".piece."+coords) !== null) {
+                        let next = moveDirection("left", x-1, y, coords)
+                        // nextCoords = _intToLetter(x) + (y-1);
+                        if (typeof lastCoords != "undefined") {
+                            return _movePiece(next, lastCoords)
+                        }
+                        
+                    } else {
+                        return _movePiece(coords, lastCoords)
+                    }
+                } else if (dir == "left") {
+                    let tile = document.querySelector('.tile.'+coords)
+                    if (document.querySelector(".piece."+coords) !== null) {
+                        let next = moveDirection("right", x+1, y, coords)
+                        // nextCoords = _intToLetter(x) + (y-1);
+                        if (typeof lastCoords != "undefined") {
+                            return _movePiece(next, lastCoords)
+                        }
+                        
+                    } else {
+                        return _movePiece(coords, lastCoords)
+                    }
+                }
+            }
+
+            function _movePiece(coords, fromCoords) {
+                let p = document.querySelector(".piece."+fromCoords)
+                console.log(coords, fromCoords)
+                        let tile = document.querySelector(".tile."+coords)
+                        let tx = +tile.getAttribute("x");
+                        let ty = +tile.getAttribute("y");
+                        p.classList.remove(fromCoords);
+                        p.classList.add(coords);
+                        if (p instanceof SVGCircleElement) {
+        
+                            p.setAttributeNS(null, "cx", tx + 25)
+                            p.setAttributeNS(null, "cy", ty + 25)
+                        } else {
+                            p.setAttributeNS(null, "x", tx)
+                            p.setAttributeNS(null, "y", ty)
+                        }
+
+                        return fromCoords;
             }
         </script>
     </body>
