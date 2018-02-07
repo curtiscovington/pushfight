@@ -8,7 +8,9 @@
         </style>
     </head>
     <body>
-        <svg id="board" version="1.1"
+
+        <div>
+        <svg style="float:left" id="board" version="1.1"
             baseProfile="full"
             width="250" height="450"
             xmlns="http://www.w3.org/2000/svg">
@@ -79,9 +81,10 @@
         </text>
         </svg>
 
-        
+        <div id="log" style="float:left"></div>
+        </div>
 
-        <p id="player"></p>
+        <p style="clear:both" id="player"></p>
         <p id="turn"></p>
         <script type="text/javascript">
             let turn = 0;
@@ -120,6 +123,11 @@
                 } else if (e.data === "Black Wins") {
                     document.getElementById("turn").innerHTML = "Black Wins"
                 } else if (e.data.match(/PUSH/g)) {
+                    let l = document.getElementById("log");
+                    let elem = document.createElement("p");
+                    elem.innerHTML = e.data;
+                    l.appendChild(elem);
+
                     let coords = e.data.split(' ');
                     coords.shift();
                     let x1 = _letterToInt(coords[0][0]);
@@ -154,6 +162,10 @@
                    
                 } else if (e.data.length == 5) {
                     console.log(e.data);
+                    let l = document.getElementById("log");
+                    let elem = document.createElement("p");
+                    elem.innerHTML = e.data;
+                    l.appendChild(elem);
                     coords = e.data.split(' ');
                     let tile = document.querySelector('.tile.'+coords[1])
                     let p = document.querySelector('.piece.'+coords[0]);

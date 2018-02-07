@@ -216,6 +216,5 @@ func parseLine(line []byte) []int {
 			break
 		}
 	}
-	println(string(line), coords[0], coords[1], coords[2], coords[3])
 	return coords
 }
