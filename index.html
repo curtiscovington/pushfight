@@ -338,7 +338,7 @@
                     } else {
                         return _movePiece(coords, lastCoords)
                     }
-                } else if (dir == "left") {
+                } else if (dir == "right") {
                     let tile = document.querySelector('.tile.'+coords)
                     if (document.querySelector(".piece."+coords) !== null) {
                         let next = moveDirection("right", x+1, y, coords)
